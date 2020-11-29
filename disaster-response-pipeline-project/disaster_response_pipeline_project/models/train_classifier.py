@@ -1,25 +1,83 @@
 import sys
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import classification_report
+from sklearn.model_selection import GridSearchCV
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+from sklearn.multioutput import MultiOutputClassifier
+from sklearn.model_selection import train_test_split
 
+from nltk.stem import WordNetLemmatizer
+from nltk.tokenize import word_tokenize
+from sklearn.pipeline import Pipeline
+from sqlalchemy import create_engine
+import pandas as pd
+import numpy as np
+import pickle
+import nltk
+import sys
+nltk.download(['punkt','wordnet'])
 
 def load_data(database_filepath):
-    pass
+    engine = create_engine('sqlite:///{}'.format(database_filepath))
+    df = pd.read_sql_table('messages', con=engine)
+
+    # Split the dataframe into x and y
+    X = df['message']
+    Y = df.drop(columns=['id','message','original','genre'])
+
+    # Get the label names
+    category_names = Y.columns
+
+    return X, Y, category_names
 
 
 def tokenize(text):
-    pass
+    tokens = word_tokenize(text)
+    lemmatizer = WordNetLemmatizer()
+
+    # Lemmatize each word in tokens
+    clean_tokens = []
+    for tok in tokens:
+        clean_tok = lemmatizer.lemmatize(tok).lower().strip()
+        clean_tokens.append(clean_tok)
+
+    return clean_tokens
+
 
 
 def build_model():
-    pass
+    pipeline = Pipeline([
+        
+        ('text_pipeline', Pipeline([
+            ('vect', CountVectorizer(tokenizer=tokenize)),
+            ('tfidf', TfidfTransformer())
+        ])),
+
+        ('clf', MultiOutputClassifier(KNeighborsClassifier()))
+    ])
+
+    ## Find the optimal model using GridSearchCV
+    parameters = {
+        'text_pipeline__tfidf__use_idf': (True, False),
+        'clf__estimator__weights': ['uniform', 'distance']
+    }
+
+    pipeline = GridSearchCV(pipeline, param_grid=parameters, verbose=5, cv=2, n_jobs=2)
+
+    return pipeline
 
 
 def evaluate_model(model, X_test, Y_test, category_names):
-    pass
+    Y_pred = model.predict(X_test)
+    print(classification_report(Y_test, Y_pred, target_names=category_names))
 
 
 def save_model(model, model_filepath):
-    pass
-
+    pkl_filename = '{}'.format(model_filepath)
+    with open(pkl_filename, 'wb') as file:
+        pickle.dump(model, file)
 
 def main():
     if len(sys.argv) == 3:
