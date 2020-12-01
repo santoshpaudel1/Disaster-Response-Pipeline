@@ -1,83 +1,100 @@
 import sys
-from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.metrics import classification_report
-from sklearn.model_selection import GridSearchCV
-from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
-from sklearn.multioutput import MultiOutputClassifier
-from sklearn.model_selection import train_test_split
-
-from nltk.stem import WordNetLemmatizer
-from nltk.tokenize import word_tokenize
-from sklearn.pipeline import Pipeline
-from sqlalchemy import create_engine
 import pandas as pd
 import numpy as np
 import pickle
-import nltk
-import sys
-nltk.download(['punkt','wordnet'])
+from sqlalchemy import create_engine
+
+# import tokenize_function
+from models.tokenizer_function import Tokenizer
+
+# import sklearn
+from sklearn.pipeline import Pipeline
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.multioutput import MultiOutputClassifier
+from sklearn.metrics import precision_score, recall_score, f1_score
+from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
+from sklearn.externals import joblib
 
 def load_data(database_filepath):
-    engine = create_engine('sqlite:///{}'.format(database_filepath))
-    df = pd.read_sql_table('messages', con=engine)
-
-    # Split the dataframe into x and y
+    """
+        Load data from the sqlite database. 
+    Args: 
+        database_filepath: the path of the database file
+    Returns: 
+        X (DataFrame): messages 
+        Y (DataFrame): One-hot encoded categories
+        category_names (List)
+    """
+    
+    # load data from database
+    engine = create_engine('sqlite:///../data/DisasterResponse.db')
+    df = pd.read_sql_table('DisasterResponse', engine)
     X = df['message']
-    Y = df.drop(columns=['id','message','original','genre'])
-
-    # Get the label names
+    Y = df.drop(['id', 'message', 'original', 'genre'], axis=1)
     category_names = Y.columns
-
+    
     return X, Y, category_names
 
 
-def tokenize(text):
-    tokens = word_tokenize(text)
-    lemmatizer = WordNetLemmatizer()
-
-    # Lemmatize each word in tokens
-    clean_tokens = []
-    for tok in tokens:
-        clean_tok = lemmatizer.lemmatize(tok).lower().strip()
-        clean_tokens.append(clean_tok)
-
-    return clean_tokens
-
-
-
-def build_model():
+def build_model():    
+    """
+      build NLP pipeline - count words, tf-idf, multiple output classifier,
+      grid search the best parameters
+    Args: 
+        None
+    Returns: 
+        cross validated classifier object
+    """   
+    # 
     pipeline = Pipeline([
-        
-        ('text_pipeline', Pipeline([
-            ('vect', CountVectorizer(tokenizer=tokenize)),
-            ('tfidf', TfidfTransformer())
-        ])),
-
-        ('clf', MultiOutputClassifier(KNeighborsClassifier()))
+        ('tokenizer', Tokenizer()),
+        ('vec', CountVectorizer()),
+        ('tfidf', TfidfTransformer()),
+        ('clf', MultiOutputClassifier(RandomForestClassifier(n_estimators = 100)))
     ])
+    
+    # grid search
+    parameters = {'clf__estimator__max_features':['sqrt', 0.5],
+              'clf__estimator__n_estimators':[50, 100]}
 
-    ## Find the optimal model using GridSearchCV
-    parameters = {
-        'text_pipeline__tfidf__use_idf': (True, False),
-        'clf__estimator__weights': ['uniform', 'distance']
-    }
-
-    pipeline = GridSearchCV(pipeline, param_grid=parameters, verbose=5, cv=2, n_jobs=2)
-
-    return pipeline
+    cv = GridSearchCV(estimator=pipeline, param_grid = parameters, cv = 5, n_jobs = 10)
+   
+    return cv
 
 
 def evaluate_model(model, X_test, Y_test, category_names):
-    Y_pred = model.predict(X_test)
-    print(classification_report(Y_test, Y_pred, target_names=category_names))
+    """
+        Evaluate the model performances, in terms of f1-score, precison and recall
+    Args: 
+        model: the model to be evaluated
+        X_test: X_test dataframe
+        Y_test: Y_test dataframe
+        category_names: category names list defined in load data
+    Returns: 
+        perfomances (DataFrame)
+    """   
+    # predict on the X_test
+    y_pred = model.predict(X_test)
+    
+    # build classification report on every column
+    performances = []
+    for i in range(len(category_names)):
+        performances.append([f1_score(Y_test.iloc[:, i].values, y_pred[:, i], average='micro'),
+                             precision_score(Y_test.iloc[:, i].values, y_pred[:, i], average='micro'),
+                             recall_score(Y_test.iloc[:, i].values, y_pred[:, i], average='micro')])
+    # build dataframe
+    performances = pd.DataFrame(performances, columns=['f1 score', 'precision', 'recall'],
+                                index = category_names)   
+    return performances
 
 
 def save_model(model, model_filepath):
-    pkl_filename = '{}'.format(model_filepath)
-    with open(pkl_filename, 'wb') as file:
-        pickle.dump(model, file)
+    """
+        Save model to pickle
+    """
+    joblib.dump(model, open(model_filepath, 'wb'))
+
 
 def main():
     if len(sys.argv) == 3:
