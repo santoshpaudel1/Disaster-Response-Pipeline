@@ -1,53 +1,55 @@
 import sys
 import numpy as np
-from sqlalchemy import create_engine
-
 import pandas as pd
-
-
+from sqlalchemy import *
 
 def load_data(messages_filepath, categories_filepath):
-     # Read messages and categories data
+     """
+        Load data from the csv. 
+    Args: 
+        messages_filepath: the path of the messages.csv files that needs to be transferred
+        categories_filepath: the path of the categories.csv files that needs to be transferred
+    Returns: 
+        merged_df (DataFrame): messages and categories merged dataframe
+    """
     messages = pd.read_csv(messages_filepath)
     categories = pd.read_csv(categories_filepath)
-
-    # Merge the two dataframes
-    df = messages.merge(categories, on='id')
-    
+    df = pd.merge(messages, categories, on='id', how='outer')
     return df
 
 
 def clean_data(df):
-    # Create column based on values in categories column
-    categories = df['categories'].str.split(';', expand=True)
+    
+   """
+        Clean the unstructured merged dataframe into structured dataframes. 
+        1. Rename columns of different categories
+        2. Remove Duplicates
 
-    # Rename the columns with the proper name
-    row = categories.loc[0,:]
-    category_colnames = row.apply(lambda x: x.split('-')[0]).tolist()
+    Args: 
+        df: The preprocessed dataframe
+    Returns: 
+        df (DataFrame): messages and categories merged dataframe
+    """
+    categories = df['categories'].str.split(";", expand=True)
+    row = categories.iloc[0]
+    category_colnames = list(map(lambda x: x.split("-")[0], categories.iloc[0].values.tolist()))
     categories.columns = category_colnames
-
-    # Clean the value in categories
     for column in categories:
-
         # set each value to be the last character of the string
-        categories[column] = categories[column].apply(lambda x: x.split('-')[1])
-        
+        categories[column] = categories[column].str[-1]
+
         # convert column from string to numeric
-        categories[column] = categories[column].astype(int)
-
-    categories['related'] = categories['related'].replace(2, 1)
-
-    # Replace the original categories column with the new one and drop duplicates
-    df.drop(columns=['categories'], inplace=True)
+        categories[column] = categories[column].apply(pd.to_numeric)
+    del df['categories']
     df = pd.concat([df, categories], axis=1)
-    df.drop_duplicates(inplace=True)
-
+    df = df.drop_duplicates(keep='first')
     return df
+    
 
 
 def save_data(df, database_filename):
-    # Create sqlite engine and save the dataframe with the name messages
-    engine = engine = create_engine('sqlite:///Messages.db')
+    '''Saves the cleaned dataframe to a table messages in the database given'''
+    engine = create_engine('sqlite:///'+ database_filename)
     df.to_sql('messages', engine, index=False)  
 
 
