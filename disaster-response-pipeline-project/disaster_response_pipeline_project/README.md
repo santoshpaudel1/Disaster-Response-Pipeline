@@ -3,6 +3,8 @@ In this project, it is analyzed disaster data from Figure Eight to build a model
 
 The project also includes a web app where an emergency worker can input a new message and get classification results in fidderent categories
 
+Project Link: https://github.com/santosh13579/disaster-response-pipeline-project/tree/main/disaster-response-pipeline-project/disaster_response_pipeline_project
+
 ### Instructions:
 1. Run the following commands in the project's root directory to set up your database and model.
 
