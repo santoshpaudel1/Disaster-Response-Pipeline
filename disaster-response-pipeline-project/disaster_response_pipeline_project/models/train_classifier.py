@@ -1,20 +1,20 @@
 import sys
 import pandas as pd
 import numpy as np
-import pickle
 from sqlalchemy import create_engine
-
-# import tokenize_function
-from models.tokenizer_function import Tokenizer
-
-# import sklearn
+import nltk
+import re
+import pickle
+nltk.download(['punkt', 'wordnet'])
+from nltk.tokenize import word_tokenize
+from nltk.stem import WordNetLemmatizer
+from sklearn.ensemble import AdaBoostClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.multioutput import MultiOutputClassifier
-from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import precision_score, recall_score, f1_score
-from sklearn.externals import joblib
-from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GridSearchCV
 
 
 def load_data(database_filepath):
@@ -27,18 +27,32 @@ def load_data(database_filepath):
         Y (DataFrame): One-hot encoded categories
         category_names (List)
     """
-    
-    # load data from database
-    engine = create_engine('sqlite:///../data/DisasterResponse.db')
-    df = pd.read_sql_table('DisasterResponse', engine)
+    engine = create_engine('sqlite:///' + database_filepath)
+    df = pd.read_sql('select * from messages', engine)
     X = df['message']
-    Y = df.drop(['id', 'message', 'original', 'genre'], axis=1)
-    category_names = Y.columns
-    
-    return X, Y, category_names
+    y = df.iloc[:, 4:39]
+    y['related'].replace(2, 1, inplace=True)
+    category_names = y.columns.tolist()
+    return X, y, category_names
+
+def tokenize(text):
+    '''
+    Removes whitespaces, reduces each word to its base form, converts to lowercase and return an array of each word
+    in a message
+    '''
+    text = re.sub(r'[^\w\s]','',text)
+    tokens = word_tokenize(text)
+    lemmatizer = WordNetLemmatizer()
+
+    clean_tokens = []
+    for tok in tokens:
+        clean_tok = lemmatizer.lemmatize(tok).lower().strip()
+        clean_tokens.append(clean_tok)
+
+    return clean_tokens
 
 
-def build_model():    
+def build_model():
     """
       build NLP pipeline - count words, tf-idf, multiple output classifier,
       grid search the best parameters
@@ -47,25 +61,22 @@ def build_model():
     Returns: 
         cross validated classifier object
     """   
-    # 
     pipeline = Pipeline([
-        ('tokenizer', Tokenizer()),
-        ('vec', CountVectorizer()),
-        ('tfidf', TfidfTransformer()),
-        ('clf', MultiOutputClassifier(RandomForestClassifier(n_estimators = 100)))
-    ])
-    
-    # grid search
-    parameters = {'clf__estimator__max_features':['sqrt', 0.5],
-              'clf__estimator__n_estimators':[50, 100]}
+            ('vect', CountVectorizer(tokenizer=tokenize)),
+            ('tfidf', TfidfTransformer()),
+            ('clf', MultiOutputClassifier(AdaBoostClassifier()))
+        ])
+    parameters = {
+            'vect__ngram_range': ((1, 1), (1, 2)),
+            'vect__max_df': (0.1, 0.5, 0.75),
+            'tfidf__use_idf': (True, False)
+        }
 
-    cv = GridSearchCV(estimator=pipeline, param_grid = parameters, cv = 5, n_jobs = 10)
-   
+    cv = GridSearchCV(pipeline, param_grid=parameters, verbose=2, n_jobs=-1)
     return cv
 
-
 def evaluate_model(model, X_test, Y_test, category_names):
-    """
+   """
         Evaluate the model performances, in terms of f1-score, precison and recall
     Args: 
         model: the model to be evaluated
@@ -75,26 +86,20 @@ def evaluate_model(model, X_test, Y_test, category_names):
     Returns: 
         perfomances (DataFrame)
     """   
-    # predict on the X_test
     y_pred = model.predict(X_test)
-    
-    # build classification report on every column
-    performances = []
-    for i in range(len(category_names)):
-        performances.append([f1_score(Y_test.iloc[:, i].values, y_pred[:, i], average='micro'),
-                             precision_score(Y_test.iloc[:, i].values, y_pred[:, i], average='micro'),
-                             recall_score(Y_test.iloc[:, i].values, y_pred[:, i], average='micro')])
-    # build dataframe
-    performances = pd.DataFrame(performances, columns=['f1 score', 'precision', 'recall'],
-                                index = category_names)   
-    return performances
+    y_pred_df = pd.DataFrame(y_pred, columns=category_names)
+    evaluation = {}
+    for column in Y_test.columns:
+        evaluation[column] = []
+        evaluation[column].append(precision_score(Y_test[column], y_pred_df[column]))
+        evaluation[column].append(recall_score(Y_test[column], y_pred_df[column]))
+        evaluation[column].append(f1_score(Y_test[column], y_pred_df[column]))
+    print(pd.DataFrame(evaluation))
 
 
 def save_model(model, model_filepath):
-    """
-        Save model to pickle
-    """
-    joblib.dump(model, open(model_filepath, 'wb'))
+    '''Saves the model to a pickle file'''
+    pickle.dump(model, open(model_filepath, 'wb'))
 
 
 def main():
