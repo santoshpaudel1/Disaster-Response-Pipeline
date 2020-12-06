@@ -10,11 +10,12 @@ from models.tokenizer_function import Tokenizer
 # import sklearn
 from sklearn.pipeline import Pipeline
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
-from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.multioutput import MultiOutputClassifier
+from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import precision_score, recall_score, f1_score
-from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from sklearn.externals import joblib
+from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
+
 
 def load_data(database_filepath):
     """
