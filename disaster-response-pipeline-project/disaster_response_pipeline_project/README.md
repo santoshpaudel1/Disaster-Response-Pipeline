@@ -5,6 +5,16 @@ The project also includes a web app where an emergency worker can input a new me
 
 Project Link: https://github.com/santosh13579/disaster-response-pipeline-project/tree/main/disaster-response-pipeline-project/disaster_response_pipeline_project
 
+File Descriptions:
+
+    ETL Pipeline Preparation.ipynb: Notebook experiment for the ETL pipelines
+    ML Pipeline Preparation.ipynb: Notebook experiment for the machine learning pipelines
+    data/process_data.py: The ETL pipeline used to process data in preparation for model building.
+    models/train_classifier.py: The Machine Learning pipeline used to fit, tune, evaluate, and export the model to a Python pickle
+    app/templates/~.html: HTML pages for the web app.
+    run.py: Start the Python server for the web app and prepare visualizations.
+
+
 ### Instructions:
 1. Run the following commands in the project's root directory to set up your database and model.
 
