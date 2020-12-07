@@ -1,17 +1,14 @@
 import sys
-import numpy as np
 import pandas as pd
 from sqlalchemy import *
 
 def load_data(messages_filepath, categories_filepath):
-     """
-        Load data from the csv. 
-    Args: 
-        messages_filepath: the path of the messages.csv files that needs to be transferred
-        categories_filepath: the path of the categories.csv files that needs to be transferred
-    Returns: 
-        merged_df (DataFrame): messages and categories merged dataframe
-    """
+    '''Load data from the csv. 
+     Args: 
+     messages_filepath: the path of the messages.csv files that needs to be transferred
+     categories_filepath: the path of the categories.csv files that needs to be transferred
+     Returns: 
+     merged_df (DataFrame): messages and categories merged dataframe'''
     messages = pd.read_csv(messages_filepath)
     categories = pd.read_csv(categories_filepath)
     df = pd.merge(messages, categories, on='id', how='outer')
@@ -19,17 +16,15 @@ def load_data(messages_filepath, categories_filepath):
 
 
 def clean_data(df):
-    
-   """
-        Clean the unstructured merged dataframe into structured dataframes. 
-        1. Rename columns of different categories
-        2. Remove Duplicates
+    '''Clean the unstructured merged dataframe into structured dataframes. 
+    1. Rename columns of different categories
+    2. Remove Duplicates
 
     Args: 
-        df: The preprocessed dataframe
+    df: The preprocessed dataframe
     Returns: 
-        df (DataFrame): messages and categories merged dataframe
-    """
+    df (DataFrame): messages and categories merged dataframe
+    '''
     categories = df['categories'].str.split(";", expand=True)
     row = categories.iloc[0]
     category_colnames = list(map(lambda x: x.split("-")[0], categories.iloc[0].values.tolist()))
