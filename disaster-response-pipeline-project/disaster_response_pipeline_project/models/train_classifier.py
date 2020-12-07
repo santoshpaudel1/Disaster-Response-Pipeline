@@ -1,6 +1,5 @@
 import sys
 import pandas as pd
-import numpy as np
 from sqlalchemy import create_engine
 import nltk
 import re
@@ -18,15 +17,8 @@ from sklearn.model_selection import GridSearchCV
 
 
 def load_data(database_filepath):
-    """
-        Load data from the sqlite database. 
-    Args: 
-        database_filepath: the path of the database file
-    Returns: 
-        X (DataFrame): messages 
-        Y (DataFrame): One-hot encoded categories
-        category_names (List)
-    """
+    '''Loads data from the database given. 
+       Returns the input variables, output variables and the category names'''
     engine = create_engine('sqlite:///' + database_filepath)
     df = pd.read_sql('select * from messages', engine)
     X = df['message']
@@ -53,14 +45,7 @@ def tokenize(text):
 
 
 def build_model():
-    """
-      build NLP pipeline - count words, tf-idf, multiple output classifier,
-      grid search the best parameters
-    Args: 
-        None
-    Returns: 
-        cross validated classifier object
-    """   
+    '''Builds a machine learning pipeline to train.'''
     pipeline = Pipeline([
             ('vect', CountVectorizer(tokenizer=tokenize)),
             ('tfidf', TfidfTransformer()),
@@ -76,16 +61,7 @@ def build_model():
     return cv
 
 def evaluate_model(model, X_test, Y_test, category_names):
-   """
-        Evaluate the model performances, in terms of f1-score, precison and recall
-    Args: 
-        model: the model to be evaluated
-        X_test: X_test dataframe
-        Y_test: Y_test dataframe
-        category_names: category names list defined in load data
-    Returns: 
-        perfomances (DataFrame)
-    """   
+    '''Calculates the precision, recall and f1-score for each of the category names'''
     y_pred = model.predict(X_test)
     y_pred_df = pd.DataFrame(y_pred, columns=category_names)
     evaluation = {}
