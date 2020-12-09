@@ -63,6 +63,42 @@ def index():
                     'title': "Genre"
                 }
             }
+        },
+        {
+            'data': [
+                Bar(
+                    x=list(category_counts.index),
+                    y=list(category_counts)
+                )
+            ],
+
+            'layout': {
+                'title': 'Message Categories',
+                'yaxis': {
+                    'title': "Count"
+                },
+                'xaxis': {
+                    'title': "Category"
+                }
+            }
+        },
+        {
+            'data': [
+                dict(
+                    x=category_hists,
+                    type='histogram'
+                ),
+            ],
+
+            'layout': {
+                'title': 'Message Category Attribute Histogram',
+                'yaxis': {
+                    'title': "Count"
+                },
+                'xaxis': {
+                    'title': "Number of Category Attributes"
+                }
+            }
         }
     ]
     
