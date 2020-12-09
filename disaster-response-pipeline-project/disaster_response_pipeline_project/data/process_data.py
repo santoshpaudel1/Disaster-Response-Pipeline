@@ -35,7 +35,7 @@ def clean_data(df):
 
         # convert column from string to numeric
         categories[column] = categories[column].apply(pd.to_numeric)
-    del df['categories']
+    categories=categories.clip(0,1)
     df = pd.concat([df, categories], axis=1)
     df = df.drop_duplicates(keep='first')
     return df
