@@ -3,10 +3,13 @@ In this project, it is analyzed disaster data from Figure Eight to build a model
 
 The project also includes a web app where an emergency worker can input a new message and get classification results in fidderent categories. In summary:
 
--Used pre-labeled tweets and text messages from real life disasters (Figure Eight dataset) .
+-Used pre-labeled tweets and text messages from real life disasters (Figure Eight dataset)
+
 -Prepared data using ETL pipeline (merged, cleaned, stored in SQLite database).
+
 -Build supervised learning model by using machine learning pipeline (text processing, trained and tuned
-the model using GridSearchCV)
+the model using GridSearchCV).
+
 Project Link: https://github.com/santosh13579/disaster-response-pipeline-project/tree/main/disaster-response-pipeline-project/disaster_response_pipeline_project
 
 File Descriptions:
